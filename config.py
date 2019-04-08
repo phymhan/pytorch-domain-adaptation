@@ -1,3 +1,3 @@
 from pathlib import Path
 
-DATA_DIR = Path('/home/joris/data')
+DATA_DIR = Path('/media/ligong/Passport/Datasets')

@@ -1,7 +1,5 @@
 """
-Implements RevGrad:
-Unsupervised Domain Adaptation by Backpropagation, Ganin & Lemptsky (2014)
-Domain-adversarial training of neural networks, Ganin et al. (2016)
+Adversarial Uncertainty Domain Adaptation
 """
 import argparse
 
@@ -15,22 +13,20 @@ from tqdm import tqdm
 
 import config
 from data import MNISTM
-from models import Net
-from utils import GrayscaleToRgb, GradientReversal
+from models import Net, BayesNet
+from utils import GrayscaleToRgb, GradientReversal, reparameterize
 
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 
 def main(args):
-    model = Net().to(device)
+    model = BayesNet().to(device)
     model.load_state_dict(torch.load(args.MODEL_FILE))
-    feature_extractor = model.feature_extractor
-    clf = model.classifier
 
     discriminator = nn.Sequential(
         GradientReversal(),
-        nn.Linear(320, 50),
+        nn.Linear(10, 50),
         nn.ReLU(),
         nn.Linear(50, 20),
         nn.ReLU(),
@@ -63,10 +59,14 @@ def main(args):
                 domain_y = domain_y.to(device)
                 label_y = source_labels.to(device)
 
-                features = feature_extractor(x).view(x.shape[0], -1)
-                domain_preds = discriminator(features).squeeze()
-                label_preds = clf(features[:source_x.shape[0]])
-                
+                # args.T should be 1 for current version
+                y_preds, s_preds = model(x)
+                logits = reparameterize(y_preds, s_preds)
+                # logits = y_preds
+                domain_preds = discriminator(s_preds).squeeze()
+                # domain_preds = discriminator(logits).squeeze()
+                label_preds = logits[:source_x.shape[0]]
+
                 domain_loss = F.binary_cross_entropy_with_logits(domain_preds, domain_y)
                 label_loss = F.cross_entropy(label_preds, label_y)
                 loss = domain_loss + label_loss
@@ -78,7 +78,7 @@ def main(args):
                 total_domain_loss += domain_loss.item()
                 total_label_accuracy += (label_preds.max(1)[1] == label_y).float().mean().item()
                 
-                target_label_preds = clf(features[source_x.shape[0]:])
+                target_label_preds = logits[source_x.shape[0]:]
                 target_label_accuracy += (target_label_preds.cpu().max(1)[1] == target_labels).float().mean().item()
 
         mean_loss = total_domain_loss / n_batches
@@ -87,7 +87,7 @@ def main(args):
         tqdm.write(f'EPOCH {epoch:03d}: domain_loss={mean_loss:.4f}, '
                    f'source_accuracy={mean_accuracy:.4f}, target_accuracy={target_mean_accuracy:.4f}')
 
-        torch.save(model.state_dict(), 'trained_models/revgrad.pt')
+        torch.save(model.state_dict(), 'trained_models/auda.pt')
 
 
 if __name__ == '__main__':
@@ -95,5 +95,6 @@ if __name__ == '__main__':
     arg_parser.add_argument('MODEL_FILE', help='A model in trained_models')
     arg_parser.add_argument('--batch-size', type=int, default=64)
     arg_parser.add_argument('--epochs', type=int, default=15)
+    arg_parser.add_argument('--T', type=int, default=1)
     args = arg_parser.parse_args()
     main(args)

@@ -32,6 +32,7 @@ def main(args):
     target_model = Net().to(device)
     target_model.load_state_dict(torch.load(args.MODEL_FILE))
     target_model = target_model.feature_extractor
+    target_clf = clf.classifier
 
     discriminator = nn.Sequential(
         nn.Linear(320, 50),
@@ -60,6 +61,7 @@ def main(args):
 
         total_loss = 0
         total_accuracy = 0
+        target_label_accuracy = 0
         for _ in trange(args.iterations, leave=False):
             # Train discriminator
             set_requires_grad(target_model, requires_grad=False)
@@ -89,7 +91,7 @@ def main(args):
             set_requires_grad(target_model, requires_grad=True)
             set_requires_grad(discriminator, requires_grad=False)
             for _ in range(args.k_clf):
-                _, (target_x, _) = next(batch_iterator)
+                _, (target_x, target_labels) = next(batch_iterator)
                 target_x = target_x.to(device)
                 target_features = target_model(target_x).view(target_x.shape[0], -1)
 
@@ -103,10 +105,14 @@ def main(args):
                 loss.backward()
                 target_optim.step()
 
-        mean_loss = total_loss / (args.iterations*k_disc)
-        mean_accuracy = total_accuracy / (args.iterations*k_disc)
+                target_label_preds = target_clf(target_features)
+                target_label_accuracy += (target_label_preds.cpu().max(1)[1] == target_labels).float().mean().item()
+
+        mean_loss = total_loss / (args.iterations*args.k_disc)
+        mean_accuracy = total_accuracy / (args.iterations*args.k_disc)
+        target_mean_accuracy = target_label_accuracy / (args.iterations*args.k_clf)
         tqdm.write(f'EPOCH {epoch:03d}: discriminator_loss={mean_loss:.4f}, '
-                   f'discriminator_accuracy={mean_accuracy:.4f}')
+                   f'discriminator_accuracy={mean_accuracy:.4f}, target_accuracy={target_mean_accuracy:.4f}')
 
         # Create the full target model and save it
         clf.feature_extractor = target_model
