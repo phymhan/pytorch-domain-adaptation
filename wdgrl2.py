@@ -17,6 +17,7 @@ from data import MNISTM, ImageClassdata
 from models import Net
 from utils import loop_iterable, set_requires_grad, GrayscaleToRgb
 import torchvision.transforms as transforms
+import os
 
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -89,6 +90,9 @@ def main(args):
     clf_optim = torch.optim.Adam(clf_model.parameters(), lr=1e-4)
     clf_criterion = nn.CrossEntropyLoss()
 
+    if not os.path.exists('logs'): os.makedirs('logs')
+    f = open(f'logs/{args.adapt_setting}_{args.name}.txt', 'w+')
+
     for epoch in range(1, args.epochs+1):
         batch_iterator = zip(loop_iterable(source_loader), loop_iterable(target_loader))
 
@@ -145,7 +149,9 @@ def main(args):
         # mean_accuracy = total_accuracy / (args.iterations * args.k_disc)
         target_mean_accuracy = target_label_accuracy / (args.iterations * args.k_clf)
         tqdm.write(f'EPOCH {epoch:03d}: critic_loss={mean_loss:.4f}, target_accuracy={target_mean_accuracy:.4f}')
-        torch.save(clf_model.state_dict(), f'trained_models/{args.adapt_setting}_{args.name}.pt')
+        f.write(f'EPOCH {epoch:03d}: critic_loss={mean_loss:.4f}, target_accuracy={target_mean_accuracy:.4f}')
+        torch.save(clf_model.state_dict(), f'trained_models/{args.adapt_setting}_{args.name}_ep{epoch}.pt')
+    f.close()
 
 
 if __name__ == '__main__':
@@ -153,7 +159,7 @@ if __name__ == '__main__':
     arg_parser.add_argument('MODEL_FILE', help='A model in trained_models')
     arg_parser.add_argument('--batch-size', type=int, default=64)
     arg_parser.add_argument('--iterations', type=int, default=500)
-    arg_parser.add_argument('--epochs', type=int, default=5)
+    arg_parser.add_argument('--epochs', type=int, default=15)
     arg_parser.add_argument('--k-critic', type=int, default=5)
     arg_parser.add_argument('--k-clf', type=int, default=1)
     arg_parser.add_argument('--gamma', type=float, default=10)

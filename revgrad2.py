@@ -18,6 +18,7 @@ from data import MNISTM, ImageClassdata
 from models import Net, DTN, BDTN
 from utils import GrayscaleToRgb, GradientReversal
 import torchvision.transforms as transforms
+import os
 
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -72,6 +73,8 @@ def main(args):
                                shuffle=True, num_workers=1, pin_memory=True)
 
     optim = torch.optim.Adam(list(discriminator.parameters()) + list(model.parameters()))
+    if not os.path.exists('logs'): os.makedirs('logs')
+    f = open(f'logs/{args.adapt_setting}_{args.name}.txt', 'w+')
 
     for epoch in range(1, args.epochs+1):
         batches = zip(source_loader, target_loader)
@@ -110,15 +113,18 @@ def main(args):
         target_mean_accuracy = target_label_accuracy / n_batches
         tqdm.write(f'EPOCH {epoch:03d}: domain_loss={mean_loss:.4f}, '
                    f'source_accuracy={mean_accuracy:.4f}, target_accuracy={target_mean_accuracy:.4f}')
+        f.write(f'EPOCH {epoch:03d}: domain_loss={mean_loss:.4f}, '
+                f'source_accuracy={mean_accuracy:.4f}, target_accuracy={target_mean_accuracy:.4f}\n')
 
-        torch.save(model.state_dict(), f'trained_models/{args.adapt_setting}_{args.name}.pt')
+        torch.save(model.state_dict(), f'trained_models/{args.adapt_setting}_{args.name}_ep{epoch}.pt')
+    f.close()
 
 
 if __name__ == '__main__':
     arg_parser = argparse.ArgumentParser(description='Domain adaptation using RevGrad')
     arg_parser.add_argument('MODEL_FILE', help='A model in trained_models')
     arg_parser.add_argument('--batch-size', type=int, default=64)
-    arg_parser.add_argument('--epochs', type=int, default=15)
+    arg_parser.add_argument('--epochs', type=int, default=30)
     arg_parser.add_argument('--adapt-setting', type=str, default='svhn2mnist')
     arg_parser.add_argument('--src-root', type=str, default=None)
     arg_parser.add_argument('--tar-root', type=str, default=None)
