@@ -3,6 +3,8 @@ import numpy as np
 import torch
 from torch.utils.data import Dataset
 from torchvision import datasets, transforms
+import os
+from PIL import Image
 
 import config
 
@@ -53,3 +55,42 @@ class MNISTM(Dataset):
 
     def __len__(self):
         return len(self.mnist)
+
+
+class ImageClassdata(Dataset):
+    """Face Landmarks dataset."""
+
+    def __init__(self, txt_file, root_dir, img_type, transform=transforms.ToTensor()):
+        """
+        Args:
+            txt_fpred_conf_tensorile (string): Path to the txt file with annotations.
+            root_dir (string): Directory with all the images.
+            transform (callable, optional): Optional transform to be applied
+                on a sample.
+        """
+        with open(txt_file, 'r') as f:
+            self.images_frame = [l.strip('\n') for l in f.readlines()]
+        self.root_dir = root_dir
+        self.transform = transform
+        self.img_type = img_type
+        self.paths, self.labels = [], []
+        for l in self.images_frame:
+            self.paths.append(os.path.join(self.root_dir, l.split()[0]))
+            self.labels.append(int(l.split()[1]))
+
+    def __len__(self):
+        return len(self.images_frame)
+
+    def __getitem__(self, idx):
+        if self.img_type == 'grayscale':
+            image = Image.open(self.paths[idx])
+        elif self.img_type == 'RGB':
+            img = Image.open(self.paths[idx])
+            image = img.convert('RGB')
+        else:
+            raise NotImplementedError
+
+        if self.transform:
+            image = self.transform(image)
+        label = self.labels[idx]
+        return image, label
