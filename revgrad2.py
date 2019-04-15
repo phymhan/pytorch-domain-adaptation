@@ -68,9 +68,9 @@ def main(args):
     else:
         raise NotImplementedError
     source_loader = DataLoader(source_dataset, batch_size=half_batch,
-                               shuffle=True, num_workers=1, pin_memory=True)
+                               shuffle=True, num_workers=1, pin_memory=True, drop_last=True)
     target_loader = DataLoader(target_dataset, batch_size=half_batch,
-                               shuffle=True, num_workers=1, pin_memory=True)
+                               shuffle=True, num_workers=1, pin_memory=True, drop_last=True)
 
     optim = torch.optim.Adam(list(discriminator.parameters()) + list(model.parameters()))
     if not os.path.exists('logs'): os.makedirs('logs')

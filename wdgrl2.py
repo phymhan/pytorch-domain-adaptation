@@ -82,9 +82,9 @@ def main(args):
     else:
         raise NotImplementedError
     source_loader = DataLoader(source_dataset, batch_size=half_batch,
-                               shuffle=True, num_workers=1, pin_memory=True)
+                               shuffle=True, num_workers=1, pin_memory=True, drop_last=True)
     target_loader = DataLoader(target_dataset, batch_size=half_batch,
-                               shuffle=True, num_workers=1, pin_memory=True)
+                               shuffle=True, num_workers=1, pin_memory=True, drop_last=True)
 
     critic_optim = torch.optim.Adam(critic.parameters(), lr=1e-4)
     clf_optim = torch.optim.Adam(clf_model.parameters(), lr=1e-4)

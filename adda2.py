@@ -72,9 +72,9 @@ def main(args):
     else:
         raise NotImplementedError
     source_loader = DataLoader(source_dataset, batch_size=half_batch,
-                               shuffle=True, num_workers=1, pin_memory=True)
+                               shuffle=True, num_workers=1, pin_memory=True, drop_last=True)
     target_loader = DataLoader(target_dataset, batch_size=half_batch,
-                               shuffle=True, num_workers=1, pin_memory=True)
+                               shuffle=True, num_workers=1, pin_memory=True, drop_last=True)
 
     discriminator_optim = torch.optim.Adam(discriminator.parameters())
     target_optim = torch.optim.Adam(target_model.parameters())
